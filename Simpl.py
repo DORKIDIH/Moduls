@@ -4,10 +4,11 @@ import io
 import base64
 
 API_KEY = "sk-UD33pBtFhZQB46zVTJ2YMbicViPSMU4wT9gscHzb3hwzXCZT"
+API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image"
 
 @loader.tds
 class SimpleAiImageGen(loader.Module):
-    """Генерация изображений по описанию через Stable Diffusion API"""
+    """Генерация изображений через Stable Diffusion API"""
 
     strings = {
         "name": "SimpleAiImageGen",
@@ -16,17 +17,7 @@ class SimpleAiImageGen(loader.Module):
         "error": "❌ Ошибка при генерации изображения.",
     }
 
-    async def genphoto_cmd(self, message):
-        """Использование: .genphoto <описание> — создаёт изображение по тексту"""
-        prompt = utils.get_args_raw(message)
-        if not prompt:
-            await message.edit(self.strings["no_prompt"])
-            return
-
-        await message.edit(self.strings["generating"])
-
-        API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image"
-
+    async def _generate_image(self, prompt, message):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -43,6 +34,8 @@ class SimpleAiImageGen(loader.Module):
             "steps": 30
         }
 
+        await message.edit(self.strings["generating"])
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(API_URL, headers=headers, json=json_data) as resp:
@@ -57,5 +50,22 @@ class SimpleAiImageGen(loader.Module):
                 await message.client.send_file(message.chat_id, img_file, reply_to=message.id)
 
             await message.delete()
+
         except Exception as e:
             await message.edit(f"{self.strings['error']} ({e})")
+
+    async def genphoto_cmd(self, message):
+        """Команда .genphoto <описание> — генерация картинки по описанию"""
+        prompt = utils.get_args_raw(message)
+        if not prompt:
+            await message.edit(self.strings["no_prompt"])
+            return
+        await self._generate_image(prompt, message)
+
+    async def genphoto_kot_cmd(self, message):
+        """Команда .genphoto_kot <описание> — пример с подчёркиванием"""
+        prompt = utils.get_args_raw(message)
+        if not prompt:
+            await message.edit(self.strings["no_prompt"])
+            return
+        await self._generate_image(prompt, message)
